@@ -13,7 +13,7 @@ def train(args, gen, dis, dataloader, opt_g, opt_d):
     gen_losses = []
     dis_losses = []
     for i, batch in enumerate(dataloader):
-        img, sketch = batch[0], batch[1]
+        img, sketch = batch[0].to(args.device), batch[1].to(args.device)
         g_img = gen(sketch)
         d_value_2 = dis(g_img, sketch)
         g_loss = - torch.log(d_value_2).mean()
@@ -39,7 +39,7 @@ def test(args, gen, dis, dataloader, num_epoch):
     gen_losses = []
     dis_losses = []
     for i, batch in enumerate(dataloader):
-        img, sketch = batch[0], batch[1]
+        img, sketch = batch[0].to(args.device), batch[1].to(args.device)
         g_img = gen(sketch)
         d_value_2 = dis(g_img, sketch)
         g_loss = - torch.log(d_value_2).mean()
@@ -55,7 +55,9 @@ def test(args, gen, dis, dataloader, num_epoch):
 
 if __name__ == '__main__':
     dataset = ImageDataset(args)
-    whole_dataset = data.random_split(dataset, [0.8, 0.2])
+    train_ratio = 0.8
+    train_len = int(len(dataset) * train_ratio)
+    whole_dataset = data.random_split(dataset, [train_len, len(dataset) - train_len])
     train_dataset, test_dataset = whole_dataset[0], whole_dataset[1]
     train_dataloader = data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                   drop_last=True, num_workers=8)

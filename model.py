@@ -7,15 +7,16 @@ class resnetblock(nn.Module):
         super(resnetblock, self).__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, stride=stride)
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, padding=padding, stride=stride)
-        # self.conv3 = nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0)
+        if in_channels != out_channels:
+            self.conv3 = nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0)
         self.activation = nn.LeakyReLU(0.2)
 
     def forward(self, x):
         residual = x
         x = self.activation(self.conv1(x))
         x = self.activation(self.conv2(x))
-        # if x.shape[1] != residual.shape[1]:
-        #     residual = self.conv3(residual)
+        if x.shape[1] != residual.shape[1]:
+            residual = self.conv3(residual)
         x = x + residual
         return x
 
@@ -33,27 +34,27 @@ class generator(nn.Module):
         self.startup1 = resnetblock(256, 256)
         self.startup2 = resnetblock(256, 256)
         self.conv1 = nn.Sequential(
-            resnetblock(256, 256, kernel_size=5),
+            resnetblock(256, 256, kernel_size=5, padding=2),
             nn.BatchNorm2d(256),
             nn.ReLU()
         )
         self.conv2 = nn.Sequential(
-            resnetblock(256, 128, kernel_size=4),
+            resnetblock(256, 128, kernel_size=5, padding=2),
             nn.BatchNorm2d(128),
             nn.ReLU()
         )
         self.conv3 = nn.Sequential(
-            resnetblock(128, 128, kernel_size=4, stride=2),
+            resnetblock(128, 128, kernel_size=5, padding=2),
             nn.BatchNorm2d(128),
             nn.ReLU()
         )
         self.conv4 = nn.Sequential(
-            resnetblock(128, 64, kernel_size=4),
+            resnetblock(128, 64, kernel_size=5, padding=2),
             nn.BatchNorm2d(64),
             nn.ReLU()
         )
         self.conv5 = nn.Sequential(
-            resnetblock(64, 64, kernel_size=6),
+            resnetblock(64, 64, kernel_size=5, padding=2),
             nn.BatchNorm2d(64),
             nn.ReLU()
         )
@@ -88,10 +89,10 @@ class generator(nn.Module):
         total_label = self.projection(total_label)
         print(total_label.shape)
         total_label = total_label.reshape(-1,256,self.sz1,self.sz1)'''
-        sketch = self.up_sample(sketch)
+        # sketch = self.up_sample(sketch)
         sketch = self.startup1(sketch)
         sketch = self.startup2(sketch)
-        sketch = self.up_sample(sketch)
+        # sketch = self.up_sample(sketch)
         x2 = self.conv1(sketch)
         x2 = self.up_sample(x2)
         x3 = self.conv2(x2)
@@ -144,9 +145,7 @@ class discriminator(nn.Module):
         x = self.maxpool(x)
         x = self.conv4(x)
         x = self.maxpool(x)
-        x = self.conv5(x)
-        x = self.maxpool(x)
-        x = self.final_linear(torch.flatten(x))
+        x = self.final_linear(torch.flatten(x, start_dim=1))
         return torch.sigmoid(x)
 
 
