@@ -147,7 +147,7 @@ class discriminator(nn.Module):
         x = self.conv5(x)
         x = self.maxpool(x)
         x = self.final_linear(torch.flatten(x))
-        return x
+        return torch.sigmoid(x)
 
 
 
