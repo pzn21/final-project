@@ -25,41 +25,48 @@ class generator(nn.Module):
     def __init__(self, args):
         super().__init__()
         self.sz1 = 8
-        '''self.projection = nn.Sequential(
+        # self.total_size = 65536
+        '''self.pre_process = nn.Sequential(
             nn.Linear(self.total_size, 256 * self.sz1 * self.sz1),
             nn.ReLU()
         )'''
-        self.pre_process = nn.Conv2d(1, 256, kernel_size=3, padding=1)  # 看了原论文的代码，感觉如果直接输入sketch的话，卷积好一些吧，linear层参数太多了
+        self.encoder = pre_process_encoder()
+        # self.pre_process = nn.Conv2d(1, 256, kernel_size=3, padding=1)
         self.up_sample = nn.Upsample(scale_factor=2)
         self.startup1 = resnetblock(256, 256)
         self.startup2 = resnetblock(256, 256)
         self.conv1 = nn.Sequential(
             resnetblock(256, 256, kernel_size=5, padding=2),
             nn.BatchNorm2d(256),
-            nn.ReLU()
+            # nn.ReLU()
         )
         self.conv2 = nn.Sequential(
             resnetblock(256, 128, kernel_size=5, padding=2),
             nn.BatchNorm2d(128),
-            nn.ReLU()
+            # nn.ReLU()
         )
         self.conv3 = nn.Sequential(
             resnetblock(128, 128, kernel_size=5, padding=2),
             nn.BatchNorm2d(128),
-            nn.ReLU()
+            # nn.ReLU()
         )
         self.conv4 = nn.Sequential(
             resnetblock(128, 64, kernel_size=5, padding=2),
             nn.BatchNorm2d(64),
-            nn.ReLU()
+            # nn.ReLU()
         )
         self.conv5 = nn.Sequential(
             resnetblock(64, 64, kernel_size=5, padding=2),
             nn.BatchNorm2d(64),
-            nn.ReLU()
+            # nn.ReLU()
         )
-        self.conv6 = nn.ConvTranspose2d(64, 3, kernel_size=1)
-        self.final_activation = nn.LeakyReLU(0.2)
+        # self.conv6 = nn.ConvTranspose2d(64, 3, kernel_size=1)
+        self.conv6 = nn.Sequential(
+            resnetblock(64, 3, kernel_size=5, padding=2),
+            # nn.BatchNorm2d(64),
+            # nn.ReLU()
+        )
+        # self.final_activation = nn.LeakyReLU(0.2)
 
     def forward(self, sketch):
         '''
@@ -80,8 +87,8 @@ class generator(nn.Module):
         tanh
         这是目前的格式，可能需要调整
         '''
-        sketch = torch.nn.functional.interpolate(sketch, (self.sz1, self.sz1))
-        sketch = self.pre_process(sketch)
+        # sketch = torch.nn.functional.interpolate(sketch, (64, 64))
+        # sketch = self.pre_process(sketch)
         '''preprocess_label = torch.zeros([label.shape[0],10]).to(label.device)
         label = torch.scatter(preprocess_label,1,label.unsqueeze(1),value = 1).to(label.device)
         total_label = torch.cat((z,label),dim = 1)
@@ -89,6 +96,7 @@ class generator(nn.Module):
         total_label = self.projection(total_label)
         print(total_label.shape)
         total_label = total_label.reshape(-1,256,self.sz1,self.sz1)'''
+        sketch = self.encoder(sketch)
         # sketch = self.up_sample(sketch)
         sketch = self.startup1(sketch)
         sketch = self.startup2(sketch)
@@ -104,9 +112,27 @@ class generator(nn.Module):
         x6 = self.conv5(x5)
         x6 = self.up_sample(x6)
         x7 = self.conv6(x6)
-        # x7 = self.final_activation(x7) # 这里应该不能加activation吧，下面还有tanh
         x8 = torch.tanh(x7)
         return x8
+
+
+class pre_process_encoder(nn.Module):
+    def __init__(self):
+        super(pre_process_encoder, self).__init__()
+        self.conv1 = resnetblock(1, 32)
+        self.conv2 = resnetblock(32, 64)
+        self.conv3 = resnetblock(64, 128)
+        self.conv4 = resnetblock(128, 256)
+        self.conv5 = resnetblock(256, 256)
+        self.pool = nn.MaxPool2d(kernel_size=2)
+
+    def forward(self, x):
+        x = self.pool(self.conv1(x))
+        x = self.pool(self.conv2(x))
+        x = self.pool(self.conv3(x))
+        x = self.pool(self.conv4(x))
+        x = self.pool(self.conv5(x))
+        return x
 
 
 class discriminator(nn.Module):
