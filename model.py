@@ -69,33 +69,9 @@ class generator(nn.Module):
         # self.final_activation = nn.LeakyReLU(0.2)
 
     def forward(self, sketch):
-        '''
-        主要的结构是：首先进行projection，然后用conv2d和up进行upsampling，中间的conv2d被resnet替换
-        注意这里我没法运行所以形状是没有调的，需要自己调一下
-        upsample
-        resnet(256,256)
-        resnet(256,256)
-        upsample
-        resnet(256,128)
-        upsample
-        resnet(128,128)
-        upsample
-        resnet(128,64)
-        upsample
-        resnet(64,64)
-        leakyrelu
-        tanh
-        这是目前的格式，可能需要调整
-        '''
+
         # sketch = torch.nn.functional.interpolate(sketch, (64, 64))
         # sketch = self.pre_process(sketch)
-        '''preprocess_label = torch.zeros([label.shape[0],10]).to(label.device)
-        label = torch.scatter(preprocess_label,1,label.unsqueeze(1),value = 1).to(label.device)
-        total_label = torch.cat((z,label),dim = 1)
-        #total label shape
-        total_label = self.projection(total_label)
-        print(total_label.shape)
-        total_label = total_label.reshape(-1,256,self.sz1,self.sz1)'''
         sketch = self.encoder(sketch)
         # sketch = self.up_sample(sketch)
         sketch = self.startup1(sketch)
